@@ -10,10 +10,7 @@ st.set_page_config(
 
 # 📌 Afficher le logo et le titre dans la barre latérale
 with st.sidebar:
-    st.image(
-        r"G:\Drive partagés\Altermondo existing biz\Orange CSR\ORANGE - DPP Groupe Episode 2\Dashboard Orange\logo_orange.gif",
-        width=100
-    )
+    st.image("logo_orange.gif", width=100)
     st.markdown("## 📊 Dashboard ESG - Orange")
     st.write("Bienvenue sur le tableau de bord interactif.")
 
