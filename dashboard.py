@@ -177,4 +177,23 @@ if mode_selection == "Ajouter des Données":
             ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
             st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
 
-# Le mode "Gérer les Relations" peut être ajouté ici si nécessaire.
+# ------------------ 🔹 Mode : Gérer les Relations ------------------
+elif mode_selection == "Gérer les Relations":
+    st.sidebar.markdown("🔗 **Gérer les Relations**")
+    relation_action = st.sidebar.radio("📌 Sélectionnez une Relation :", ["Associer un Maillon à une Catégorie"])
+
+    if relation_action == "Associer un Maillon à une Catégorie":
+        st.header("🔗 Associer un Maillon à une Catégorie")
+
+        maillons_dict = get_maillons()
+        categories_dict = get_categories()
+
+        if maillons_dict and categories_dict:
+            selected_maillon = st.selectbox("📌 Sélectionnez un Maillon :", list(maillons_dict.keys()))
+            selected_categorie = st.selectbox("📌 Sélectionnez une Catégorie :", list(categories_dict.keys()))
+
+            if st.button("✅ Associer", key="associer_maillon_categorie"):
+                associer_maillon_categorie(maillons_dict[selected_maillon], categories_dict[selected_categorie])
+                st.success(f"✅ '{selected_maillon}' a été associé à '{selected_categorie}' avec succès !")
+        else:
+            st.warning("⚠️ Aucun Maillon ou Catégorie disponible. Ajoutez des données d'abord !")
