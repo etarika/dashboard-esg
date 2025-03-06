@@ -177,58 +177,65 @@ if mode_selection == "Ajouter des Données":
             ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
             st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
 
+import sqlite3
+import streamlit as st
+
+# Sélection de l'entité
 entity_type = st.selectbox(
     "Choisissez une entité à modifier :", 
     ["Maillon", "Catégorie", "IRO", "Plan d'action", "Enjeu"]
 )
 
-if entity_type:
-    entity_type = entity_type.lower()  # Assure-toi que la variable est bien définie
-    table_name = f"{entity_type}s"  # Ajoute le 's' pour correspondre aux tables
-    cursor.execute(f"SELECT id, nom FROM {table_name}")
-else:
-    st.error("⚠️ Veuillez sélectionner une entité valide.")
+# Dictionnaire de correspondance entre l'interface utilisateur et la base de données
+entity_mapping = {
+    "Maillon": "maillons",
+    "Catégorie": "categories_parties_prenantes",
+    "IRO": "iros",
+    "Plan d'action": "plans_actions",
+    "Enjeu": "enjeux"
+}
 
-conn = sqlite3.connect("database.db")
-cursor = conn.cursor()
-table_name = f"{entity_type.lower()}s"
-cursor.execute(f"SELECT id, nom FROM {table_name}")
-options = cursor.fetchall()
-conn.close()
+if entity_type:  # Vérifie qu'une entité est sélectionnée
+    if entity_type in entity_mapping:
+        table_name = entity_mapping[entity_type]
+        
+        # Connexion à la base de données
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+        
+        # Récupération des données
+        cursor.execute(f"SELECT id, nom FROM {table_name}")
+        options = cursor.fetchall()
+        conn.close()
 
-if options:  # Vérifie que la liste n'est pas vide
-    for row in options:
-        col1, col2 = st.columns([3, 1])
-        col1.text(row[1])  # Nom de l'élément
-        if col2.button(f"Modifier {row[0]}"):
-            selected_id = row[0]
-            new_value = st.text_input("Nouvelle valeur :", row[1])
-            if st.button("Sauvegarder"):
-                conn = sqlite3.connect("database.db")
-                cursor = conn.cursor()
-                cursor.execute(f"UPDATE {entity_type.lower()}s SET nom = ? WHERE id = ?", (new_value, selected_id))
-                conn.commit()
-                conn.close()
-                st.success("Mise à jour effectuée ! ✅")
-else:
-    st.warning("⚠️ Aucun élément trouvé dans la base de données.")
+        if options:  # Vérifie que la liste n'est pas vide
+            for row in options:
+                col1, col2 = st.columns([3, 1])
+                col1.text(row[1])  # Nom de l'élément
+                if col2.button(f"Modifier {row[0]}", key=f"edit_{row[0]}"):
+                    selected_id = row[0]
+                    new_value = st.text_input("Nouvelle valeur :", row[1], key=f"newval_{row[0]}")
+                    if st.button("Sauvegarder", key=f"save_{row[0]}"):
+                        conn = sqlite3.connect("database.db")
+                        cursor = conn.cursor()
+                        cursor.execute(f"UPDATE {table_name} SET nom = ? WHERE id = ?", (new_value, selected_id))
+                        conn.commit()
+                        conn.close()
+                        st.success("Mise à jour effectuée ! ✅")
+                        st.rerun()
 
-
-for row in options:
-    col1, col2 = st.columns([3, 1])
-    col1.text(row[1])  # Nom de l'élément
-    if col2.button(f"Modifier {row[0]}"):
-        selected_id = row[0]
-        new_value = st.text_input("Nouvelle valeur :", row[1])
-        if st.button("Sauvegarder"):
-            cursor.execute(f"UPDATE {entity_type.lower()}s SET nom = ? WHERE id = ?", (new_value, selected_id))
-            conn.commit()
-            st.success("Mise à jour effectuée ! ✅")
-
-if st.button(f"Supprimer {row[0]} ❌"):
-    cursor.execute(f"DELETE FROM {entity_type.lower()}s WHERE id = ?", (row[0],))
-    conn.commit()
-    st.warning("Élément supprimé !")
+                if col2.button(f"Supprimer {row[0]} ❌", key=f"del_{row[0]}"):
+                    conn = sqlite3.connect("database.db")
+                    cursor = conn.cursor()
+                    cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (row[0],))
+                    conn.commit()
+                    conn.close()
+                    st.warning("Élément supprimé !")
+                    st.rerun()
+        else:
+            st.warning("⚠️ Aucun élément trouvé dans la base de données.")
+    else:
+        st.error("⚠️ Entité non reconnue. Vérifiez votre sélection.")
 
 
 # ------------------ 🔹 Mode : Gérer les Relations ------------------
