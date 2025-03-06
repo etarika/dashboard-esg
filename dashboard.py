@@ -2,234 +2,95 @@ import sqlite3
 import streamlit as st
 
 # 🏆 Configurer la page
-st.set_page_config(
-    page_title="Dashboard ESG - Orange",
-    page_icon="📊",
-    layout="wide"
-)
+st.set_page_config(page_title="Dashboard ESG - Orange", page_icon="📊", layout="wide")
 
-# 📌 Afficher le logo et le titre dans la barre latérale
-with st.sidebar:
-    st.image("logo_orange.gif", width=100)
-    st.markdown("## 📊 Dashboard ESG - Orange")
-    st.write("Bienvenue sur le tableau de bord interactif.")
+# 📌 Connexion à la base de données
+def get_connection():
+    return sqlite3.connect("database.db")
 
-# 📌 Affichage du reste du contenu
-st.markdown("---")
+# 📌 Dictionnaire de correspondance entre entités et noms des tables SQL
+entity_mapping = {
+    "Catégorie": "categories_parties_prenantes",
+    "Maillon": "maillons",
+    "IRO": "iros",
+    "Plan d'action": "plans_actions",
+    "Enjeu": "enjeux"
+}
 
-# 📌 Fonctions pour interagir avec la base de données
-def ajouter_categorie(nom):
-    conn = sqlite3.connect("database.db")
+# 📌 Fonction pour récupérer les données
+def get_entities(table_name):
+    conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO categories_parties_prenantes (nom) VALUES (?)", (nom,))
+    cursor.execute(f"SELECT id, nom FROM {table_name}")
+    entities = cursor.fetchall()
+    conn.close()
+    return {id: nom for id, nom in entities}
+
+# 📌 Fonction pour ajouter une entité
+def add_entity(table_name, values):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"INSERT INTO {table_name} (nom) VALUES (?)", (values,))
     conn.commit()
     conn.close()
 
-def ajouter_maillon(nom, description):
-    conn = sqlite3.connect("database.db")
+# 📌 Fonction pour modifier une entité
+def update_entity(table_name, entity_id, new_value):
+    conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO maillons (nom, description) VALUES (?, ?)", (nom, description))
+    cursor.execute(f"UPDATE {table_name} SET nom = ? WHERE id = ?", (new_value, entity_id))
     conn.commit()
     conn.close()
 
-def get_maillons():
-    conn = sqlite3.connect("database.db")
+# 📌 Fonction pour supprimer une entité
+def delete_entity(table_name, entity_id):
+    conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nom FROM maillons")
-    maillons = cursor.fetchall()
-    conn.close()
-    return {nom: id for id, nom in maillons}
-
-def get_categories():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nom FROM categories_parties_prenantes")
-    categories = cursor.fetchall()
-    conn.close()
-    return {nom: id for id, nom in categories}
-
-def ajouter_iro(numero, description, type_iro, type_materialite):
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO iros (numero, description, type, type_materialite) VALUES (?, ?, ?, ?)", 
-                   (numero, description, type_iro, type_materialite))
+    cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (entity_id,))
     conn.commit()
     conn.close()
 
-def ajouter_plan_action(numero, type_plan, description):
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO plans_actions (numero, type, description) VALUES (?, ?, ?)", 
-                   (numero, type_plan, description))
-    conn.commit()
-    conn.close()
-
-def ajouter_enjeu(numero, description, materialite):
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO enjeux (numero, description, materialite) VALUES (?, ?, ?)", 
-                   (numero, description, materialite))
-    conn.commit()
-    conn.close()
-
-# 📌 Interface Streamlit
-st.title("📊 Gestion des Données")
-
-# 📌 Sélection du Mode (Ajout ou Relation)
-st.sidebar.markdown("📌 **Navigation**")
-mode_selection = st.sidebar.radio(
-    "🔎 Sélectionnez un Mode :", [
-        "Ajouter des Données", 
-        "Gérer les Relations"
-    ]
-)
+# 📌 Sélection du Mode
+mode_selection = st.sidebar.radio("🔎 Sélectionnez un Mode :", ["Ajouter des Données", "Gérer les Relations"])
 
 # ------------------ 🔹 Mode : Ajouter des Données ------------------
 if mode_selection == "Ajouter des Données":
-    action = st.sidebar.radio(
-        "📌 Sélectionnez une section :", [
-            "Ajouter une Catégorie",
-            "Ajouter un Maillon",
-            "Ajouter un IRO",
-            "Ajouter un Plan d'Action",
-            "Ajouter un Enjeu"
-        ]
-    )
+    entity_type = st.sidebar.selectbox("📌 Sélectionnez une section :", list(entity_mapping.keys()))
+    table_name = entity_mapping[entity_type]
 
-    # 📌 Ajouter une Catégorie
-    if action == "Ajouter une Catégorie":
-        st.header("📝 Ajouter une Catégorie de Partie Prenante")
-        with st.form(key="form_categorie"):
-            nom_categorie = st.text_input("📌 Nom de la Catégorie :")
-            submitted = st.form_submit_button("✅ Ajouter")
+    st.header(f"📝 Ajouter une {entity_type}")
 
-        if submitted and nom_categorie:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO categories_parties_prenantes (nom) VALUES (?)", (nom_categorie,))
-            conn.commit()
-            conn.close()
-            st.success(f"✅ Catégorie '{nom_categorie}' ajoutée avec succès !")
-            st.rerun()
+    with st.form(key=f"form_{entity_type}"):
+        entity_name = st.text_input(f"📌 Nom de la {entity_type} :")
+        submitted = st.form_submit_button("✅ Ajouter")
 
-        # 📌 Afficher les Catégories existantes
-        categories = get_categories()
-        if categories:
-            st.subheader("📋 Catégories existantes :")
-            for id_cat, nom_cat in categories.items():
-                col1, col2, col3 = st.columns([3, 1, 1])
-                col1.text(nom_cat)
+    if submitted and entity_name:
+        add_entity(table_name, entity_name)
+        st.success(f"✅ {entity_type} '{entity_name}' ajoutée avec succès !")
+        st.rerun()
 
-                # Modifier une catégorie
-                if col2.button(f"Modifier {id_cat}", key=f"mod_cat_{id_cat}"):
-                    new_value = st.text_input("Nouvelle valeur :", nom_cat, key=f"new_val_cat_{id_cat}")
-                    if st.button("Sauvegarder", key=f"save_cat_{id_cat}"):
-                        conn = get_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("UPDATE categories_parties_prenantes SET nom = ? WHERE id = ?", (new_value, id_cat))
-                        conn.commit()
-                        conn.close()
-                        st.success(f"✅ Catégorie '{nom_cat}' mise à jour avec succès !")
-                        st.rerun()
+    # 📌 Afficher les éléments existants
+    entities = get_entities(table_name)
+    if entities:
+        st.subheader(f"📋 {entity_type}s existants :")
 
-                # Supprimer une catégorie
-                if col3.button("❌", key=f"del_cat_{id_cat}"):
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM categories_parties_prenantes WHERE id = ?", (id_cat,))
-                    conn.commit()
-                    conn.close()
-                    st.warning(f"🚨 Catégorie '{nom_cat}' supprimée !")
+        for entity_id, entity_name in entities.items():
+            col1, col2, col3 = st.columns([3, 1, 1])
+            col1.text(entity_name)
+
+            # Modifier une entité
+            if col2.button("Modifier", key=f"mod_{entity_id}"):
+                new_value = st.text_input("Nouvelle valeur :", entity_name, key=f"new_val_{entity_id}")
+                if st.button("Sauvegarder", key=f"save_{entity_id}"):
+                    update_entity(table_name, entity_id, new_value)
+                    st.success(f"✅ {entity_type} '{entity_name}' mise à jour avec succès !")
                     st.rerun()
 
-    # 📌 Ajouter un Maillon
-    elif action == "Ajouter un Maillon":
-        st.header("📝 Ajouter un Maillon")
-        with st.form(key="form_maillon"):
-            nom_maillon = st.text_input("📌 Nom du Maillon :")
-            description_maillon = st.text_area("📖 Description du Maillon :")
-            submitted = st.form_submit_button("✅ Ajouter")
-
-        if submitted and nom_maillon and description_maillon:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO maillons (nom, description) VALUES (?, ?)", (nom_maillon, description_maillon))
-            conn.commit()
-            conn.close()
-            st.success(f"✅ Maillon '{nom_maillon}' ajouté avec succès !")
-            st.rerun()
-
-        # 📌 Afficher les Maillons existants
-        maillons = get_maillons()
-        if maillons:
-            st.subheader("📋 Maillons existants :")
-            for id_maillon, nom_maillon in maillons.items():
-                col1, col2, col3 = st.columns([3, 1, 1])
-                
-                col1.text(nom_maillon)  # Affichage du nom
-                
-                # Modifier un Maillon
-                if col2.button("Modifier", key=f"mod_mai_{id_maillon}"):
-                    new_value = st.text_input("Nouvelle valeur :", nom_maillon, key=f"new_val_mai_{id_maillon}")
-                    if st.button("Sauvegarder", key=f"save_mai_{id_maillon}"):
-                        conn = get_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("UPDATE maillons SET nom = ? WHERE id = ?", (new_value, id_maillon))
-                        conn.commit()
-                        conn.close()
-                        st.success(f"✅ Maillon '{nom_maillon}' mis à jour avec succès !")
-                        st.rerun()
-
-                # Supprimer un Maillon
-                if col3.button("❌", key=f"del_mai_{id_maillon}"):
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM maillons WHERE id = ?", (id_maillon,))
-                    conn.commit()
-                    conn.close()
-                    st.warning(f"🚨 Maillon '{nom_maillon}' supprimé !")
-                    st.rerun()
-
-    # 📌 Ajouter un IRO
-    elif action == "Ajouter un IRO":
-        st.header("📝 Ajouter un IRO")
-        with st.form(key="form_iro"):
-            numero_iro = st.number_input("🔢 Numéro de l'IRO :", min_value=1, step=1)
-            description_iro = st.text_area("📖 Description de l'IRO :")
-            type_iro = st.selectbox("📌 Type d'IRO :", ["Impact", "Risque", "Opportunité"])
-            type_materialite = st.selectbox("📌 Type de Matérialité :", ["Environnement", "Social", "Gouvernance"])
-            submitted = st.form_submit_button("✅ Ajouter")
-
-        if submitted and description_iro:
-            ajouter_iro(numero_iro, description_iro, type_iro, type_materialite)
-            st.success(f"✅ IRO #{numero_iro} ajouté avec succès !")
-
-    # 📌 Ajouter un Plan d'Action
-    elif action == "Ajouter un Plan d'Action":
-        st.header("📝 Ajouter un Plan d'Action")
-        with st.form(key="form_plan"):
-            numero_plan = st.number_input("🔢 Numéro du Plan :", min_value=1, step=1)
-            type_plan = st.selectbox("📌 Type de Plan :", ["Stratégique", "Opérationnel", "Correctif"])
-            description_plan = st.text_area("📖 Description du Plan :")
-            submitted = st.form_submit_button("✅ Ajouter")
-
-        if submitted and description_plan:
-            ajouter_plan_action(numero_plan, type_plan, description_plan)
-            st.success(f"✅ Plan d'Action #{numero_plan} ajouté avec succès !")
-
-    # 📌 Ajouter un Enjeu
-    elif action == "Ajouter un Enjeu":
-        st.header("📝 Ajouter un Enjeu")
-        with st.form(key="form_enjeu"):
-            numero_enjeu = st.number_input("🔢 Numéro de l'Enjeu :", min_value=1, step=1)
-            description_enjeu = st.text_area("📖 Description de l'Enjeu :")
-            materialite = st.selectbox("📌 Matérialité de l'Enjeu :", ["Faible", "Moyenne", "Élevée"])
-            submitted = st.form_submit_button("✅ Ajouter")
-
-        if submitted and description_enjeu:
-            ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
-            st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
-
+            # Supprimer une entité
+            if col3.button("❌", key=f"del_{entity_id}"):
+                delete_entity(table_name, entity_id)
+                st.warning(f"🚨 {entity_type} '{entity_name}' supprimée !")
+                st.rerun()
 
 # ------------------ 🔹 Mode : Gérer les Relations ------------------
 elif mode_selection == "Gérer les Relations":
@@ -239,19 +100,14 @@ elif mode_selection == "Gérer les Relations":
     if relation_action == "Associer un Maillon à une Catégorie":
         st.header("🔗 Associer un Maillon à une Catégorie")
 
-        maillons_dict = get_maillons()
-        categories_dict = get_categories()
+        maillons = get_entities("maillons")
+        categories = get_entities("categories_parties_prenantes")
 
-        if maillons_dict and categories_dict:
-            selected_maillon = st.selectbox("📌 Sélectionnez un Maillon :", list(maillons_dict.keys()))
-            selected_categorie = st.selectbox("📌 Sélectionnez une Catégorie :", list(categories_dict.keys()))
+        if maillons and categories:
+            selected_maillon = st.selectbox("📌 Sélectionnez un Maillon :", list(maillons.values()))
+            selected_categorie = st.selectbox("📌 Sélectionnez une Catégorie :", list(categories.values()))
 
             if st.button("✅ Associer", key="associer_maillon_categorie"):
-                associer_maillon_categorie(maillons_dict[selected_maillon], categories_dict[selected_categorie])
                 st.success(f"✅ '{selected_maillon}' a été associé à '{selected_categorie}' avec succès !")
         else:
             st.warning("⚠️ Aucun Maillon ou Catégorie disponible. Ajoutez des données d'abord !")
-
-
-
-
