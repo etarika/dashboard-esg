@@ -180,13 +180,14 @@ if mode_selection == "Ajouter des Données":
 import sqlite3
 import streamlit as st
 
-# Sélection de l'entité
-entity_type = st.selectbox(
-    "Choisissez une entité à modifier :", 
-    ["Maillon", "Catégorie", "IRO", "Plan d'action", "Enjeu"]
-)
+# 🏆 Configurer la page
+st.set_page_config(page_title="Dashboard ESG - Orange", page_icon="📊", layout="wide")
 
-# Dictionnaire de correspondance entre l'interface utilisateur et la base de données
+# 📌 Connexion à la base de données
+def get_connection():
+    return sqlite3.connect("database.db")
+
+# 📌 Dictionnaire de correspondance entre entités et noms des tables SQL
 entity_mapping = {
     "Maillon": "maillons",
     "Catégorie": "categories_parties_prenantes",
@@ -195,48 +196,60 @@ entity_mapping = {
     "Enjeu": "enjeux"
 }
 
-if entity_type:  # Vérifie qu'une entité est sélectionnée
-    if entity_type in entity_mapping:
-        table_name = entity_mapping[entity_type]
-        
-        # Connexion à la base de données
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        
-        # Récupération des données
+# 📌 Sélection de l'entité à modifier
+entity_type = st.selectbox("Choisissez une entité à modifier :", list(entity_mapping.keys()))
+
+# Vérifier si l'entité existe bien
+if entity_type in entity_mapping:
+    table_name = entity_mapping[entity_type]
+
+    # 📌 Récupération des éléments existants
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
         cursor.execute(f"SELECT id, nom FROM {table_name}")
         options = cursor.fetchall()
-        conn.close()
+    except sqlite3.OperationalError:
+        st.error(f"⚠️ La table `{table_name}` n'existe pas dans la base de données.")
+        options = []
 
-        if options:  # Vérifie que la liste n'est pas vide
-            for row in options:
-                col1, col2 = st.columns([3, 1])
-                col1.text(row[1])  # Nom de l'élément
-                if col2.button(f"Modifier {row[0]}", key=f"edit_{row[0]}"):
-                    selected_id = row[0]
-                    new_value = st.text_input("Nouvelle valeur :", row[1], key=f"newval_{row[0]}")
-                    if st.button("Sauvegarder", key=f"save_{row[0]}"):
-                        conn = sqlite3.connect("database.db")
-                        cursor = conn.cursor()
-                        cursor.execute(f"UPDATE {table_name} SET nom = ? WHERE id = ?", (new_value, selected_id))
-                        conn.commit()
-                        conn.close()
-                        st.success("Mise à jour effectuée ! ✅")
-                        st.rerun()
+    conn.close()
 
-                if col2.button(f"Supprimer {row[0]} ❌", key=f"del_{row[0]}"):
-                    conn = sqlite3.connect("database.db")
+    # 📌 Affichage des données et options de modification
+    if options:
+        st.subheader(f"📋 {entity_type}s existants :")
+
+        for row in options:
+            col1, col2, col3 = st.columns([3, 1, 1])
+            col1.text(row[1])  # Nom de l'élément
+            
+            # Bouton Modifier
+            if col2.button(f"Modifier {row[0]}", key=f"mod_{row[0]}"):
+                selected_id = row[0]
+                new_value = st.text_input("Nouvelle valeur :", row[1], key=f"new_val_{row[0]}")
+                if st.button("Sauvegarder", key=f"save_{row[0]}"):
+                    conn = get_connection()
                     cursor = conn.cursor()
-                    cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (row[0],))
+                    cursor.execute(f"UPDATE {table_name} SET nom = ? WHERE id = ?", (new_value, selected_id))
                     conn.commit()
                     conn.close()
-                    st.warning("Élément supprimé !")
+                    st.success("✅ Mise à jour effectuée !")
                     st.rerun()
-        else:
-            st.warning("⚠️ Aucun élément trouvé dans la base de données.")
-    else:
-        st.error("⚠️ Entité non reconnue. Vérifiez votre sélection.")
 
+            # Bouton Supprimer
+            if col3.button(f"❌", key=f"del_{row[0]}"):
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (row[0],))
+                conn.commit()
+                conn.close()
+                st.warning("🚨 Élément supprimé !")
+                st.rerun()
+    else:
+        st.info(f"Aucune donnée trouvée dans `{table_name}`.")
+else:
+    st.error("⚠️ Veuillez sélectionner une entité valide.")
 
 # ------------------ 🔹 Mode : Gérer les Relations ------------------
 elif mode_selection == "Gérer les Relations":
