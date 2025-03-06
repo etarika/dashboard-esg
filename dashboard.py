@@ -85,11 +85,9 @@ mode_selection = st.sidebar.radio(
 )
 
 # ------------------ 🔹 Mode : Ajouter des Données ------------------
-# 📌 Mode : Ajouter des Données
 if mode_selection == "Ajouter des Données":
     action = st.sidebar.radio(
-        "📌 Sélectionnez une section :",
-        [
+        "📌 Sélectionnez une section :", [
             "Ajouter une Catégorie",
             "Ajouter un Maillon",
             "Ajouter un IRO",
@@ -106,7 +104,11 @@ if mode_selection == "Ajouter des Données":
             submitted = st.form_submit_button("✅ Ajouter")
 
         if submitted and nom_categorie:
-            ajouter_categorie(nom_categorie)
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO categories_parties_prenantes (nom) VALUES (?)", (nom_categorie,))
+            conn.commit()
+            conn.close()
             st.success(f"✅ Catégorie '{nom_categorie}' ajoutée avec succès !")
             st.rerun()
 
@@ -122,7 +124,7 @@ if mode_selection == "Ajouter des Données":
                 if col2.button(f"Modifier {id_cat}", key=f"mod_cat_{id_cat}"):
                     new_value = st.text_input("Nouvelle valeur :", nom_cat, key=f"new_val_cat_{id_cat}")
                     if st.button("Sauvegarder", key=f"save_cat_{id_cat}"):
-                        conn = sqlite3.connect("database.db")
+                        conn = get_connection()
                         cursor = conn.cursor()
                         cursor.execute("UPDATE categories_parties_prenantes SET nom = ? WHERE id = ?", (new_value, id_cat))
                         conn.commit()
@@ -131,8 +133,8 @@ if mode_selection == "Ajouter des Données":
                         st.rerun()
 
                 # Supprimer une catégorie
-                if col3.button(f"❌", key=f"del_cat_{id_cat}"):
-                    conn = sqlite3.connect("database.db")
+                if col3.button("❌", key=f"del_cat_{id_cat}"):
+                    conn = get_connection()
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM categories_parties_prenantes WHERE id = ?", (id_cat,))
                     conn.commit()
@@ -149,7 +151,11 @@ if mode_selection == "Ajouter des Données":
             submitted = st.form_submit_button("✅ Ajouter")
 
         if submitted and nom_maillon and description_maillon:
-            ajouter_maillon(nom_maillon, description_maillon)
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO maillons (nom, description) VALUES (?, ?)", (nom_maillon, description_maillon))
+            conn.commit()
+            conn.close()
             st.success(f"✅ Maillon '{nom_maillon}' ajouté avec succès !")
             st.rerun()
 
@@ -157,34 +163,32 @@ if mode_selection == "Ajouter des Données":
         maillons = get_maillons()
         if maillons:
             st.subheader("📋 Maillons existants :")
+            for id_maillon, nom_maillon in maillons.items():
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                col1.text(nom_maillon)  # Affichage du nom
+                
+                # Modifier un Maillon
+                if col2.button("Modifier", key=f"mod_mai_{id_maillon}"):
+                    new_value = st.text_input("Nouvelle valeur :", nom_maillon, key=f"new_val_mai_{id_maillon}")
+                    if st.button("Sauvegarder", key=f"save_mai_{id_maillon}"):
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE maillons SET nom = ? WHERE id = ?", (new_value, id_maillon))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"✅ Maillon '{nom_maillon}' mis à jour avec succès !")
+                        st.rerun()
 
-for id_maillon, nom_maillon in maillons.items():
-    col1, col2, col3 = st.columns([3, 1, 1])
-    
-    col1.text(nom_maillon)  # Affichage du nom (sans l'ID)
-
-    # Modifier un Maillon
-    if col2.button("Modifier", key=f"mod_mai_{id_maillon}"):
-        new_value = st.text_input("Nouvelle valeur :", nom_maillon, key=f"new_val_mai_{id_maillon}")
-        if st.button("Sauvegarder", key=f"save_mai_{id_maillon}"):
-            conn = sqlite3.connect("database.db")
-            cursor = conn.cursor()
-            cursor.execute("UPDATE maillons SET nom = ? WHERE id = ?", (new_value, id_maillon))
-            conn.commit()
-            conn.close()
-            st.success(f"✅ Maillon '{nom_maillon}' mis à jour avec succès !")
-            st.rerun()
-
-    # Supprimer un Maillon
-    if col3.button("❌", key=f"del_mai_{id_maillon}"):
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM maillons WHERE id = ?", (id_maillon,))
-        conn.commit()
-        conn.close()
-        st.warning(f"🚨 Maillon '{nom_maillon}' supprimé !")
-        st.rerun()
-
+                # Supprimer un Maillon
+                if col3.button("❌", key=f"del_mai_{id_maillon}"):
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM maillons WHERE id = ?", (id_maillon,))
+                    conn.commit()
+                    conn.close()
+                    st.warning(f"🚨 Maillon '{nom_maillon}' supprimé !")
+                    st.rerun()
 
     # 📌 Ajouter un IRO
     elif action == "Ajouter un IRO":
