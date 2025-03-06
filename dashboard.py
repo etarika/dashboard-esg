@@ -177,6 +177,24 @@ if mode_selection == "Ajouter des Données":
             ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
             st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
 
+
+for row in options:
+    col1, col2 = st.columns([3, 1])
+    col1.text(row[1])  # Nom de l'élément
+    if col2.button(f"Modifier {row[0]}"):
+        selected_id = row[0]
+        new_value = st.text_input("Nouvelle valeur :", row[1])
+        if st.button("Sauvegarder"):
+            cursor.execute(f"UPDATE {entity_type.lower()}s SET nom = ? WHERE id = ?", (new_value, selected_id))
+            conn.commit()
+            st.success("Mise à jour effectuée ! ✅")
+
+if st.button(f"Supprimer {row[0]} ❌"):
+    cursor.execute(f"DELETE FROM {entity_type.lower()}s WHERE id = ?", (row[0],))
+    conn.commit()
+    st.warning("Élément supprimé !")
+
+
 # ------------------ 🔹 Mode : Gérer les Relations ------------------
 elif mode_selection == "Gérer les Relations":
     st.sidebar.markdown("🔗 **Gérer les Relations**")
