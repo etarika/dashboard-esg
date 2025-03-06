@@ -177,9 +177,22 @@ if mode_selection == "Ajouter des Données":
             ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
             st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
 
+entity_type = st.selectbox(
+    "Choisissez une entité à modifier :", 
+    ["Maillon", "Catégorie", "IRO", "Plan d'action", "Enjeu"]
+)
+
+if entity_type:
+    entity_type = entity_type.lower()  # Assure-toi que la variable est bien définie
+    table_name = f"{entity_type}s"  # Ajoute le 's' pour correspondre aux tables
+    cursor.execute(f"SELECT id, nom FROM {table_name}")
+else:
+    st.error("⚠️ Veuillez sélectionner une entité valide.")
+
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
-cursor.execute(f"SELECT id, nom FROM {entity_type.lower()}s")
+table_name = f"{entity_type.lower()}s"
+cursor.execute(f"SELECT id, nom FROM {table_name}")
 options = cursor.fetchall()
 conn.close()
 
