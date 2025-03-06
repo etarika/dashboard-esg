@@ -177,6 +177,29 @@ if mode_selection == "Ajouter des Données":
             ajouter_enjeu(numero_enjeu, description_enjeu, materialite)
             st.success(f"✅ Enjeu #{numero_enjeu} ajouté avec succès !")
 
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
+cursor.execute(f"SELECT id, nom FROM {entity_type.lower()}s")
+options = cursor.fetchall()
+conn.close()
+
+if options:  # Vérifie que la liste n'est pas vide
+    for row in options:
+        col1, col2 = st.columns([3, 1])
+        col1.text(row[1])  # Nom de l'élément
+        if col2.button(f"Modifier {row[0]}"):
+            selected_id = row[0]
+            new_value = st.text_input("Nouvelle valeur :", row[1])
+            if st.button("Sauvegarder"):
+                conn = sqlite3.connect("database.db")
+                cursor = conn.cursor()
+                cursor.execute(f"UPDATE {entity_type.lower()}s SET nom = ? WHERE id = ?", (new_value, selected_id))
+                conn.commit()
+                conn.close()
+                st.success("Mise à jour effectuée ! ✅")
+else:
+    st.warning("⚠️ Aucun élément trouvé dans la base de données.")
+
 
 for row in options:
     col1, col2 = st.columns([3, 1])
